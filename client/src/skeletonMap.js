@@ -1,85 +1,98 @@
-export default {
-    'Nose': {
-        bones: ['Head'],
-        data: [],
-        boneIndexes: [],
+export default [
+    {
+        name: 'Neck',
+        index: 0,
+        parentIndex: 1,
+        boneName: 'Fbx01_Head',
     },
-    'Neck': {
-        bones: ['Spine', 'Spine1', 'Spine2', 'Spine3'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'RShoulder',
+        index: 2,
+        parentIndex: 1,
+        boneName: 'Fbx01_R_Clavicle'
     },
-    'RShoulder': {
-        bones: ['R_Clavicle'],
-        data: [],
-        boneIndexes: [],
-        parent: 'Neck'
+    {
+        name: 'RElbow',
+        index: 3,
+        parentIndex: 2,
+        boneName: 'Fbx01_R_UpperArm'
     },
-    'RElbow': {
-        bones: ['R_UpperArm'],
-        data: [],
-        boneIndexes: [],
-        parent: 'RShoulder'
+    {
+        name: 'RWrist',
+        index: 4,
+        parentIndex: 3,
+        boneName: 'Fbx01_R_Forearm'
     },
-    'RWrist': {
-        bones: ['R_Forearm'],
-        data: [],
-        boneIndexes: [],
-        parent: 'RElbow'
+    {
+        name: 'LShoulder',
+        index: 5,
+        parentIndex: 1,
+        boneName: 'Fbx01_L_Clavicle'
     },
-    'LShoulder': {
-        bones: ['L_Clavicle'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'LElbow',
+        index: 6,
+        parentIndex: 5,
+        boneName: 'Fbx01_L_UpperArm'
     },
-    'LElbow': {
-        bones: ['L_UpperArm'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'LWrist',
+        index: 7,
+        parentIndex: 6,
+        boneName: 'Fbx01_L_Forearm'
     },
-    'LWrist': {
-        bones: ['L_Forearm'],
-        data: [],
-        boneIndexes: [],
+    // {
+    //     name: 'MidHip',
+    //     index: 8,
+    //     parentIndex: 1,
+    //     boneName: 'Fbx01_Spine'
+    // },
+    {
+        name: 'RKnee',
+        index: 10,
+        parentIndex: 9,
+        boneName: 'Fbx01_R_Thigh'
     },
-    'RHip': {
-        bones: ['R_Clavicle'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'RAnkle',
+        index: 11,
+        parentIndex: 10,
+        boneName: 'Fbx01_R_Calf'
     },
-    'LHip': {
-        bones: ['L_Clavicle'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'LKnee',
+        index: 13,
+        parentIndex: 12,
+        boneName: 'Fbx01_L_Thigh'
     },
-    'RKnee': {
-        bones: ['R_Thigh'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'LAnkle',
+        index: 14,
+        parentIndex: 13,
+        boneName: 'Fbx01_L_Calf'
     },
-    'RAnkle': {
-        bones: ['R_Calf'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'LBigToe',
+        index: 22,
+        parentIndex: 14,
+        boneName: 'Fbx01_L_Toe0'
     },
-    'RHeel': {
-        bones: ['R_Foot'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'RBigToe',
+        index: 19,
+        parentIndex: 11,
+        boneName: 'Fbx01_R_Toe0'
     },
-    'LKnee': {
-        bones: ['L_Thigh'],
-        data: [],
-        boneIndexes: [],
+    {
+        name: 'LHeel',
+        index: 21,
+        parentIndex: 14,
+        boneName: 'Fbx01_L_Foot'
     },
-    'LAnkle': {
-        bones: ['L_Calf'],
-        data: [],
-        boneIndexes: [],
-    },
-    'LHeel': {
-        bones: ['L_Foot'],
-        data: [],
-        boneIndexes: [],
-    },
-}
+    {
+        name: 'RHeel',
+        index: 24,
+        parentIndex: 11,
+        boneName: 'Fbx01_R_Foot'
+    }
+];

@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const glob = require('glob');
 const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT;
 
@@ -13,6 +14,8 @@ app.use(cors());
 app.options('*', cors());
 
 const router = express.Router();
+
+app.use('/data', express.static(path.join('', 'data')));
 
 router.get('/data/pose', (req, res) => {
 

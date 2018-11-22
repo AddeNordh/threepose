@@ -2,29 +2,10 @@ import * as THREE from 'three';
 import skeletonMap from './skeletonMap';
 
 let player = null;
-let poseFrames = null;
 let hasData = false;
-let frame = 0;
+let mixer = null;
 
-const skeletonOrder = [
-    "Nose",
-    "Neck",
-    "RShoulder",
-    "RElbow",
-    "RWrist",
-    "LShoulder",
-    "LElbow",
-    "LWrist",
-    "RHip",
-    "RKnee",
-    "RAnkle",
-    "LHip",
-    "LKnee",
-    "LAnkle",
-    "LHeel",
-    "RHeel"
-];
-
+const clock = new THREE.Clock();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, precision: 'mediump' });
 
@@ -32,11 +13,14 @@ renderer.setClearColor(0x222222);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight + 20);
 
+
 document.body.appendChild(renderer.domElement);
 
+
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 3000);
-camera.position.z = 5;
+camera.position.z = 8;
 camera.position.y = 0.2;
+
 
 const scene = new THREE.Scene();
 
@@ -66,12 +50,7 @@ const loadModel = async () => {
             });
     });
 
-    console.log(player.skeleton.bones[11])
-
-
     player.scale.set(0.02, 0.02, 0.02)
-
-
 
     player.position.y = -100 * Math.PI / 180;
     scene.add(player);
@@ -81,52 +60,106 @@ const loadModel = async () => {
 
     loadPoseData();
 
-
 }
 
 
 const loadPoseData = async () => {
 
-    try {
+    const { poseFrames } = await ( await fetch('http://localhost:1337/data/pose') ).json();
 
-        poseFrames = await ( await fetch('http://localhost:1337/data/pose') ).json();
-        poseFrames = poseFrames.poseFrames;
+    const tracks = {};
+    const tmpVector = new THREE.Vector3();
+    mixer = new THREE.AnimationMixer(player);
+    const frames = poseFrames.length;;
 
-        if (!poseFrames) {
-            throw new Error('poseFrames is undefined');
-        }
+    for (let i = 0; i < frames; i++) {
 
-        poseFrames.map(poseFrame => {
+        for (let j = 0; j < skeletonMap.length; j++) {
 
-            const pose = poseFrame.people[0].pose_keypoints_2d;
+            const keypoint = skeletonMap[j];
 
-            for (let i = 0, j = 0; i < pose.length; i += 3, j++) {
+            const frame = poseFrames[i].people[0].pose_keypoints_2d;
 
-                const bone = skeletonOrder[j];
+            const currentKeypointX = frame[keypoint.index * 3];
+            const currentKeypointY = frame[keypoint.index * 3 + 1 ];
 
-                if (!bone) break;
+            const parentKeypointX = frame[keypoint.parentIndex * 3];
+            const parentKeypointY = frame[keypoint.parentIndex * 3 + 1];
 
-                player.skeleton.bones.forEach((tmpBone, i) => {
-                    if (skeletonMap[bone].bones.includes( tmpBone.name.replace('Fbx01_', '') ) && !skeletonMap[bone].boneIndexes.includes(i)) {
-                            skeletonMap[bone].boneIndexes.push(i);
-                    }
-                });
+            const playerBone = player.skeleton.bones.find(x => x.name === keypoint.boneName);
+            const parentBone = playerBone.parent;
 
-                const x = pose[i];
-                const y = pose [i + 1];
-                const poseVec = new THREE.Vector3(x,y);
-                skeletonMap[bone].data.push(poseVec);
+            if (!(currentKeypointX && currentKeypointY) || !(parentKeypointX && parentKeypointY)) continue;
+
+            if (!(keypoint.boneName in tracks)) {
+                const track = new THREE.QuaternionKeyframeTrack(`${keypoint.boneName}.quaternion`, new Float32Array(frames), new Float32Array(frames * 4));
+                tracks[keypoint.boneName] = track;
             }
 
-        });
+            const track = tracks[keypoint.boneName];
 
-        console.log(skeletonMap);
-        hasData = true;
+            track.times[i] = (i + 1) * 1 / 30;
+
+            const currentBoneVector = new THREE.Vector3(currentKeypointX, currentKeypointY, 0);
+            const parentBoneVector = new THREE.Vector3(parentKeypointX, parentKeypointY, 0);
+
+            const tmp = currentBoneVector.clone().sub(parentBoneVector).normalize();
+
+            playerBone.updateMatrix();
+            playerBone.updateMatrixWorld();
+            playerBone.lookAt(playerBone.getWorldPosition(tmpVector).clone().add(tmp));
 
 
-    } catch (e) {
-        console.error('error fetching: ' + e);
+            const angle = playerBone.quaternion.angleTo(new THREE.Quaternion());
+            const axis = playerBone.clone().getWorldDirection(new THREE.Vector3()).normalize();
+
+            const offsetQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+            playerBone.quaternion.premultiply(offsetQuaternion);
+
+
+            // const cross = parentBoneVector.clone().cross(currentBoneVector.clone()).normalize();
+            // const w = Math.sqrt(currentBoneVector.lengthSq() * parentBoneVector.lengthSq()) + parentBoneVector.dot(currentBoneVector);
+
+            //
+            // const tmpquat = new THREE.Quaternion().setFromRotationMatrix(mat4);
+            //
+
+            // // // playerBone.quaternion.rotateTowards(parentBone.quaternion, offset);
+            // //
+            //
+            // const tmpquat = new THREE.Quaternion().setFromAxisAngle({ x: 0, y: 1, z: 0 }, offset);
+            // playerBone.quaternion.premultiply(tmpquat);
+
+
+
+            track.values[4 * i + 0] = playerBone.quaternion.x;
+            track.values[4 * i + 1] = playerBone.quaternion.y;
+            track.values[4 * i + 2] = playerBone.quaternion.z;
+            track.values[4 * i + 3] = playerBone.quaternion.w;
+
+            // playerBone.quaternion.setFromRotationMatrix(mat4);
+
+            // playerBone.quaternion.copy({ x: cross.x, y: cross.y, z: cross.z, w: w }).normalize();
+
+
+            // const pos = new THREE.Vector3().copy(playerBone.position).add(currentBoneVector);
+            // playerBone.lookAt(pos);
+
+        }
+
     }
+
+    const clip = new THREE.AnimationClip('pose', frames, Object.values(tracks)).optimize();
+
+    const action = mixer.clipAction(clip).play();
+
+    hasData = true;
+
+    const video = document.querySelector('video');
+    video.play();
+
+    player.rotation.y = Math.PI;
+
 
 }
 
@@ -135,89 +168,17 @@ const init = () => {
 }
 
 
-
 window.onload = init;
 
 (function render() {
-    setTimeout(() => {
-        requestAnimationFrame(render);
-    }, 1000 / 30)
-
-    if (player && hasData) {
-        player.rotation.y += 0.05;
-        if (frame >= skeletonMap['RShoulder'].data.length) {
-            frame = 0;
-        }
 
 
-        const shoulder = skeletonMap['RShoulder'];
-        const elbow = skeletonMap['RElbow'];
-        const wrist = skeletonMap['RWrist'];
-
-        const sparent = skeletonMap[shoulder.parent];
-        const eparent = skeletonMap[elbow.parent];
-        const wparent = skeletonMap[wrist.parent];
-
-        const sv = shoulder.data[0].clone().sub(sparent.data[0].clone()).normalize();
-        const ev = elbow.data[0].clone().sub(eparent.data[0].clone()).normalize();
-        const wv = wrist.data[0].clone().sub(wparent.data[0].clone()).normalize();
-
-        const sangle = new THREE.Euler().setFromVector3(sv);
-        const eangle = new THREE.Euler().setFromVector3(ev);
-        const wangle = new THREE.Euler().setFromVector3(wv);
-
-        const sb = player.skeleton.bones[19];
-        const eb = player.skeleton.bones[20];
-        const wb = player.skeleton.bones[21];
-        // shoulder
-        sb.rotation.x = sangle.x * 180 / Math.PI;
-        // sb.rotation.y = sangle.y * 180 / Math.PI;
-        sb.position.x = sv.x * Math.PI;
-        sb.position.y = sv.y * Math.PI;
-        // player.skeleton.bones[19].rotation.y = (sangle.y);
-
-        // upperarm
-        eb.rotation.x = eangle.x * 180 / Math.PI;
-        eb.position.x = ev.x * Math.PI
-        eb.position.y = ev.y * Math.PI
-        // player.skeleton.bones[20].rotation.y = (eangle.y);
-
-        // wrist
-        wb.rotation.x = wangle.x * 180 / Math.PI;
-        // player.skeleton.bones[21].rotation.y = (wangle.y);
-
-
-        // skeletonOrder.forEach(current => {
-        //     const { bones, data, boneIndexes } = skeletonMap[current];
-        //     bones.forEach((bone, boneIndex) => {
-        //         const index = boneIndexes[boneIndex];
-        //         const x1 = data[frame].x;
-        //         const y1 = data[frame + 1].y;
-        //         const x2 = data[frame + 2].x;
-        //         const y2 = data[frame + 3].y;
-        //
-        //
-        //         if (x1 && x2 && y1 && y2) {
-        //             const x = (x1 - x2) / Math.PI;
-        //             const y = (y1 - y2) / Math.PI;
-        //
-        //             const v = new THREE.Vector3(x,y);
-        //
-        //             player.skeleton.bones[index].position.x = v.x * Math.PI
-        //             player.skeleton.bones[index].position.y = v.y * Math.PI
-        //
-        //
-        //
-        //         } else {
-        //             frame = 0;
-        //         }
-        //
-        //
-        //     });
-        // });
-        frame++;
+    if (player && hasData && mixer) {
+        mixer.update(clock.getDelta());
     }
 
     renderer.render(scene, camera);
+    requestAnimationFrame(render);
+
 
 })();
